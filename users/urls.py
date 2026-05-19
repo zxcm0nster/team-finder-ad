@@ -1,5 +1,5 @@
 from django.urls import path
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView
 from . import views
 
 app_name = 'users'
@@ -9,5 +9,5 @@ urlpatterns = [
     # Используем встроенный LoginView, но подсовываем ему твой шаблон
     path('login/', LoginView.as_view(template_name='users/login.html'), name='login'),
     # При выходе перекидываем обратно на страницу логина или главную
-    path('logout/', LogoutView.as_view(next_page='users:login'), name='logout'),
+    path('logout/', views.custom_logout, name='logout'),
 ]

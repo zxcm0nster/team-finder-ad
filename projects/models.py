@@ -1,6 +1,19 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+
+class Skill(models.Model):
+    name = models.CharField(max_length=50, unique=True, verbose_name="Название навыка")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Навык"
+        verbose_name_plural = "Навыки"
+        ordering = ['name']
+
+
 class Project(models.Model):
     STATUS_CHOICES = [
         ("open", "Open"),
@@ -13,7 +26,7 @@ class Project(models.Model):
     github_url = models.URLField(blank=True, null=True, verbose_name="GitHub")
     status = models.CharField(max_length=6, choices=STATUS_CHOICES, verbose_name="Статус")
     participants = models.ManyToManyField(User, blank=True, related_name='participated_projects', verbose_name="Участники")
-
+    skills = models.ManyToManyField(Skill, related_name='projects', blank=True, verbose_name="Навыки")
     class Meta:
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"

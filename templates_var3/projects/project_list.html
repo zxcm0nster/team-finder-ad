@@ -22,13 +22,13 @@
         <span class="filter-label">Фильтр по необходимым навыкам:</span>
         <div class="filter-chips">
             {% for skill in all_skills %}
-            <a href="?skill={{ skill }}"
-               class="filter-chip {% if active_skill == skill %}active{% endif %}">
-                {{ skill }}
+            <a href="?skill={{ skill.name|urlencode }}"
+               class="filter-chip {% if active_skill == skill.name %}active{% endif %}">
+                {{ skill.name }}
             </a>
             {% endfor %}
             {% if active_skill %}
-            <a href="/projects/list" class="filter-reset">Сбросить</a>
+            <a href="{% url 'projects:list' %}" class="filter-reset">Сбросить</a>
             {% endif %}
         </div>
     </div>
