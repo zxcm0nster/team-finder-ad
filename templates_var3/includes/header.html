@@ -38,14 +38,14 @@
                     <span class="username">{{ request.user.profile.name }} {{ request.user.profile.surname }}</span>
                 </a>
                 {% else %}
-                <button class="button button-login nav-link" onclick="window.location.href='{% url 'users:login' %}'">
+                <a href="{% url 'users:login' %}" class="button button-login nav-link">
                     {% include 'includes/svg/login.html' %}
                     <p>Войти</p>
-                </button>
-                <button class="button button-register nav-link black" onclick="window.location.href='{% url 'users:register' %}'">
+                </a>
+                <a href="{% url 'users:register' %}" class="button button-register nav-link black">
                     {% include 'includes/svg/register.html' %}
                     <p>Регистрация</p>
-                </button>
+                </a>
                 {% endif %}
             </div>
         </div>
