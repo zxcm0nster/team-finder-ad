@@ -1,13 +1,10 @@
-from django.contrib.auth import logout
-from django.shortcuts import redirect
+from django.contrib.auth import logout, get_user_model, update_session_auth_hash
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.views.generic import CreateView
-from .forms import CustomUserCreationForm
-from django.views.generic import DetailView
-from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
-from django.views.generic import ListView
-from django.contrib.auth import get_user_model
+from django.views.generic import CreateView, ListView, DetailView
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from .forms import CustomUserCreationForm, ProfileEditForm, CustomPasswordChangeForm
 
 User = get_user_model()
 
@@ -22,14 +19,10 @@ def custom_logout(request):
     return redirect('users:login')
 
 class UserDetailView(DetailView):
-    # Указываем модель, из которой будем брать данные
     model = User
-    # Указываем путь к твоему шаблону
     template_name = 'users/user-details.html'
-    # Указываем, под каким именем объект будет доступен в HTML (ты используешь {{ user.name }})
     context_object_name = 'user'
     
-    # DetailView по умолчанию ищет объект по pk (primary key).
     def get_object(self):
         # Получаем id из URL
         user_id = self.kwargs.get('id')
@@ -39,16 +32,51 @@ class UserDetailView(DetailView):
 class ParticipantListView(ListView):
     model = User
     template_name = 'users/participants.html'
-    # Называем список 'participants', как просит ТЗ
     context_object_name = 'participants'
-    # Сортировка по порядку добавления в базу (по id)
     ordering = ['id']
-    # Включаем пагинацию (например, по 6 человек на страницу), 
-    # чтобы заработал page_obj в твоём HTML
     paginate_by = 6 
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Пустая строка для query_prefix, чтобы пагинация в HTML не выдавала ошибку
         context['query_prefix'] = "" 
         return context
+
+@login_required
+def edit_profile(request, user_id):
+    user_instance = get_object_or_404(User, id=user_id)
+    
+    # Защита безопасности: пользователь может редактировать только свой профиль
+    if request.user != user_instance:
+        return HttpResponseForbidden("Вы не можете редактировать чужой профиль.")
+
+    if request.method == 'POST':
+        form = ProfileEditForm(request.POST, instance=user_instance)
+        if form.is_valid():
+            form.save()
+            # Перенаправляем на страницу профиля через именованный маршрут
+            return redirect('users:user_detail', id=user_instance.id)
+    else:
+        form = ProfileEditForm(instance=user_instance)
+
+    return render(request, 'users/edit_profile.html', {'form': form})
+
+@login_required
+def change_password(request, user_id):
+    user_instance = get_object_or_404(User, id=user_id)
+    
+    # Защита: менять пароль можно только самому себе
+    if request.user != user_instance:
+        return HttpResponseForbidden("Вы не можете изменять пароль другого пользователя.")
+
+    if request.method == 'POST':
+        form = CustomPasswordChangeForm(user=user_instance, data=request.POST)
+        if form.is_valid():
+            form.save()
+            # Обновляем сессию, чтобы пользователя не выкинуло из системы
+            update_session_auth_hash(request, user_instance)
+            # Перенаправляем на страницу профиля через именованный маршрут
+            return redirect('users:user_detail', id=user_instance.id)
+    else:
+        form = CustomPasswordChangeForm(user=user_instance)
+
+    return render(request, 'users/change_password.html', {'form': form})
