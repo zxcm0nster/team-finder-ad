@@ -9,6 +9,7 @@
 
 {% block page_id %}favorites{% endblock %}
 {% block content %}
+{% url 'projects:list' as list_url %}
 <div class="project-container">
     <div class="project-header">
         <h2 class="project-title">Избранные проекты</h2>
@@ -16,12 +17,30 @@
     <p class="project-subtitle">Проекты, которые вас заинтересовали</p>
 
     <div class="projects-grid">
-        {% for project in projects %}
+        {% for project in page_obj %}
         {% include 'includes/project-card.html' %}
         {% empty %}
-        {% include 'includes/empty-project-card.html' with empty_title="Пока нет избранных проектов" empty_message="Добавляйте проекты в избранное, чтобы не потерять их" button_link="/projects/list" button_text="Посмотреть проекты" %}
+        {% include 'includes/empty-project-card.html' with empty_title="Пока нет избранных проектов" empty_message="Добавляйте проекты в избранное, чтобы не потерять их" button_link=list_url button_text="Посмотреть проекты" %}
         {% endfor %}
     </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a href="?{{ query_prefix }}page={{ page_obj.previous_page_number }}" class="page-btn">←</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="page-btn active">{{ num }}</span>
+        {% else %}
+        <a href="?{{ query_prefix }}page={{ num }}" class="page-btn">{{ num }}</a>
+        {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?{{ query_prefix }}page={{ page_obj.next_page_number }}" class="page-btn">→</a>
+        {% endif %}
+    </div>
+    {% endif %}
 
     {% include 'includes/project-fav-toggle.js' %}
 </div>

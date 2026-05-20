@@ -5,18 +5,12 @@
     if (!container) return;
 
     const projectId = container.dataset.projectId;
-    const userId = container.dataset.userId;
+    if (!projectId) return;
 
-    let skillsUrl, addUrl, removeUrl;
-    if (userId) {
-      skillsUrl = `/users/skills/`;
-      addUrl = `/users/${userId}/skills/add/`;
-      removeUrl = (skillId) => `/users/${userId}/skills/${skillId}/remove/`;
-    } else {
-      skillsUrl = `/projects/skills/`;
-      addUrl = `/projects/${projectId}/skills/add/`;
-      removeUrl = (skillId) => `/projects/${projectId}/skills/${skillId}/remove/`;
-    }
+    const skillsUrl = `/projects/skills/`;
+    const addUrl = `/projects/${projectId}/skills/add/`;
+    const removeUrl = (skillId) =>
+      `/projects/${projectId}/skills/${skillId}/remove/`;
 
     const addBtn = document.getElementById("add-skill-btn");
     const inputWrapper = document.getElementById("skill-input-wrapper");
@@ -133,8 +127,12 @@
         body: JSON.stringify({ skill_id: skillId }),
       });
       if (res.ok) {
-        const skill = await res.json();
-        appendChip(skill.id, skill.name);
+        const data = await res.json();
+        if (data.added) {
+          appendChip(data.skill_id, data.name);
+        } else if (window.toast) {
+          window.toast("Этот навык уже добавлен в проект", { type: "info" });
+        }
       }
     }
 
@@ -148,8 +146,12 @@
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
-        const skill = await res.json();
-        appendChip(skill.id, skill.name);
+        const data = await res.json();
+        if (data.added) {
+          appendChip(data.skill_id, data.name);
+        } else if (window.toast) {
+          window.toast("Этот навык уже добавлен в проект", { type: "info" });
+        }
       }
     }
 

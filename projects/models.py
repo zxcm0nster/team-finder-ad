@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Skill(models.Model):
-    name = models.CharField(max_length=50, unique=True, verbose_name="Название навыка")
+    name = models.CharField(max_length=124, unique=True, verbose_name="Название навыка")
 
     def __str__(self):
         return self.name

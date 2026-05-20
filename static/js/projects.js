@@ -71,7 +71,7 @@
             if (noParticipants) noParticipants.remove();
 
             const a = document.createElement("a");
-            a.href = `/users/${userId}`;
+            a.href = `/users/${userId}/`;
             a.id = `participant-${userId}`;
             a.innerHTML = `
               <div class="participant-item">

@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block content %}
+{% url 'projects:list' as home_url %}
 <div class="project-container">
     <div class="project-header">
         <div>
@@ -22,23 +23,17 @@
         {% for participant in page_obj %}
         <div class="participant-card">
             <div class="participant-card-header">
-                {% if participant.avatar %}
-                    <img src="{{ participant.avatar.url }}" alt="Аватар участника" class="participant-avatar">
+                {% if participant.profile.avatar %}
+                    <img src="{{ participant.profile.avatar.url }}" alt="Аватар участника" class="participant-avatar">
                 {% else %}
                     <img src="{% static 'images/default-avatar.png' %}" alt="Аватар по умолчанию" class="participant-avatar">
                 {% endif %}
             </div>
             <div class="participant-info">
                 <h3 class="participant-name">
-                    {% if participant.first_name or participant.last_name %}
-                        {{ participant.first_name }} {{ participant.last_name }}
-                    {% elif participant.name or participant.surname %}
-                        {{ participant.name }} {{ participant.surname }}
-                    {% else %}
-                        {{ participant.username }}
-                    {% endif %}
+                    {{ participant.profile.name }} {{ participant.profile.surname }}
                 </h3>
-                <p class="participant-role">{{ participant.about|default:"Информация не указана"|truncatechars:80 }}</p>
+                <p class="participant-role">{{ participant.profile.about|default:"Информация не указана"|truncatechars:80 }}</p>
             </div>
             <div class="participant-card-footer">
                 <a href="{% url 'users:user_detail' participant.id %}" class="white-button">
@@ -66,7 +61,7 @@
     </div>
     {% endif %}
     {% else %}
-    {% include 'includes/empty-project-card.html' with empty_title="Пока нет участников" empty_message="Попробуйте сбросить фильтр" button_link="/users/list" button_text="Сбросить" %}
+    {% include 'includes/empty-project-card.html' with empty_title="Пока нет участников" empty_message="Зарегистрируйтесь или пригласите коллег на платформу." button_link=home_url button_text="На главную" %}
     {% endif %}
 </div>
 {% endblock %}

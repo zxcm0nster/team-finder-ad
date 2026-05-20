@@ -53,11 +53,11 @@
         <div class="project-actions">
             <a href="#"
                class="black-button black-button-share share-button"
-               data-url="/projects/{{ project.id }}">
+               data-url="{% url 'projects:detail' project.id %}">
                 {% include 'includes/svg/share.html' %}
             </a>
             {% if user.id == project.owner.id %}
-                <a href="/projects/{{ project.id }}/edit" class="black-button">
+                <a href="{% url 'projects:edit' project.id %}" class="black-button">
                     {% include 'includes/svg/pen.html' %}
                     Редактировать
                 </a>

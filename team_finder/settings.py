@@ -37,16 +37,19 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "team_finder.urls"
 
+_task_version = (config("TASK_VERSION", default="") or "").strip() or "3"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / f"templates_var{config('TASK_VERSION', default='1')}"],
+        "DIRS": [BASE_DIR / f"templates_var{_task_version}"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "users.context_processors.favorite_project_ids",
             ],
         },
     },
@@ -119,6 +122,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_REDIRECT_URL = '/' 
-
-LOGOUT_REDIRECT_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = "/projects/list/"
+LOGIN_URL = "/users/login/"
+LOGOUT_REDIRECT_URL = "/projects/list/"

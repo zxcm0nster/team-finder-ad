@@ -1,98 +1,158 @@
 import re
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordChangeForm,
+    UserCreationForm,
+)
 from django.core.exceptions import ValidationError
 from urllib.parse import urlparse
 
+from .models import Profile
+
 User = get_user_model()
 
+
 class CustomUserCreationForm(UserCreationForm):
-    first_name = forms.CharField(max_length=150, required=True, label="Имя")
-    last_name = forms.CharField(max_length=150, required=True, label="Фамилия")
-    email = forms.EmailField(required=True, label="Email")
+    """Регистрация: email как логин; имя/фамилия попадают в User и далее в Profile через сигнал."""
+
+    email = forms.EmailField(label="Email", required=True)
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ('first_name', 'last_name', 'username', 'email')
-
-
-class ProfileEditForm(forms.ModelForm):
-    # Объявляем поля явно, чтобы Django не выбрасывал FieldError при запуске сервера
-    phone = forms.CharField(
-        required=False,
-        label='Номер телефона',
-        widget=forms.TextInput(attrs={'class': 'input-field', 'placeholder': '+7XXXXXXXXXX или 8XXXXXXXXXX'})
-    )
-    github_url = forms.URLField(
-        required=False,
-        label='Ссылка на GitHub',
-        widget=forms.URLInput(attrs={'class': 'input-field', 'placeholder': 'https://github.com/username'})
-    )
-
-    class Meta:
-        model = User
-        fields = [] # Оставляем пустым, так как наши кастомные поля объявлены выше
+        fields = ("username", "email", "first_name", "last_name", "password1", "password2")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Автоматически заполняем поля текущими данными пользователя при GET-запросе
-        if self.instance and self.instance.pk:
-            self.fields['phone'].initial = getattr(self.instance, 'phone', '')
-            self.fields['github_url'].initial = getattr(self.instance, 'github_url', '')
+        self.fields["username"].widget = forms.HiddenInput()
+        self.fields["username"].required = False
+        if "first_name" in self.fields:
+            self.fields["first_name"].label = "Имя"
+        if "last_name" in self.fields:
+            self.fields["last_name"].label = "Фамилия"
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("Пользователь с таким email уже зарегистрирован.")
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        email = (cleaned.get("email") or "").strip().lower()
+        if email:
+            cleaned["username"] = email
+            self.cleaned_data["username"] = email
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data["email"]
+        user.username = self.cleaned_data["email"]
+        if commit:
+            user.save()
+        return user
+
+
+class EmailLoginForm(AuthenticationForm):
+    """Вход по email и паролю (username в БД = email)."""
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": "Неверный email или пароль",
+    }
+
+    username = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"class": "input-field"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password"].widget.attrs.setdefault("class", "input-field")
+
+    def clean(self):
+        email = (self.cleaned_data.get("username") or "").strip().lower()
+        if email:
+            try:
+                found = User.objects.get(email__iexact=email)
+                self.cleaned_data["username"] = found.username
+            except User.DoesNotExist:
+                self.cleaned_data["username"] = email
+        return super().clean()
+
+
+class ProfileEditForm(forms.ModelForm):
+    phone = forms.CharField(
+        required=True,
+        label="Номер телефона",
+        widget=forms.TextInput(
+            attrs={
+                "class": "input-field",
+                "placeholder": "+7XXXXXXXXXX или 8XXXXXXXXXX",
+            }
+        ),
+    )
+    github_url = forms.URLField(
+        required=False,
+        label="Ссылка на GitHub",
+        widget=forms.URLInput(
+            attrs={
+                "class": "input-field",
+                "placeholder": "https://github.com/username",
+            }
+        ),
+    )
+
+    class Meta:
+        model = Profile
+        fields = ("name", "surname", "avatar", "about", "phone", "github_url")
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "input-field"}),
+            "surname": forms.TextInput(attrs={"class": "input-field"}),
+            "avatar": forms.FileInput(attrs={"class": "input-field", "id": "id_avatar"}),
+            "about": forms.Textarea(
+                attrs={"class": "input-field", "rows": 4, "placeholder": "О себе"}
+            ),
+        }
 
     def clean_phone(self):
-        phone = self.cleaned_data.get('phone', '').strip()
-        
+        phone = self.cleaned_data.get("phone", "").strip()
         if not phone:
-            return phone
+            raise ValidationError("Укажите номер телефона.")
 
-        # 1. Проверяем формат (8 или +7 и затем 10 цифр)
-        if not re.match(r'^(\+7|8)\d{10}$', phone):
-            raise ValidationError("Номер телефона должен быть в формате 8XXXXXXXXXX или +7XXXXXXXXXX.")
+        if not re.match(r"^(\+7|8)\d{10}$", phone):
+            raise ValidationError(
+                "Номер телефона должен быть в формате 8XXXXXXXXXX или +7XXXXXXXXXX."
+            )
 
-        # 2. Приводим к единому стандарту: '8' -> '+7'
-        if phone.startswith('8'):
-            phone = '+7' + phone[1:]
+        if phone.startswith("8"):
+            phone = "+7" + phone[1:]
 
-        # 3. Проверка уникальности номера телефона
-        model_class = self._meta.model
-        try:
-            if model_class.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
-                raise ValidationError("Этот номер телефона уже используется другим пользователем.")
-        except Exception:
-            # Защита на случай, если поле еще не добавлено в саму БД через миграции
-            pass
+        if (
+            Profile.objects.filter(phone=phone)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise ValidationError("Этот номер телефона уже используется другим пользователем.")
 
         return phone
 
     def clean_github_url(self):
-        github_url = self.cleaned_data.get('github_url', '').strip()
-
-        if github_url:
-            # 1. Базовая проверка структуры URL
-            parsed_url = urlparse(github_url)
-            if not parsed_url.scheme or not parsed_url.netloc:
-                raise ValidationError("Введите корректный URL-адрес.")
-
-            # 2. Проверяем домен github.com
-            if 'github.com' not in parsed_url.netloc.lower():
-                raise ValidationError("Ссылка должна вести именно на сайт github.com.")
-
+        github_url = (self.cleaned_data.get("github_url") or "").strip()
+        if not github_url:
+            return github_url
+        parsed_url = urlparse(github_url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            raise ValidationError("Введите корректный URL-адрес.")
+        if "github.com" not in parsed_url.netloc.lower():
+            raise ValidationError("Ссылка должна вести именно на сайт github.com.")
         return github_url
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        # Записываем очищенные данные в объект пользователя перед сохранением
-        user.phone = self.cleaned_data.get('phone')
-        user.github_url = self.cleaned_data.get('github_url')
-        if commit:
-            user.save()
-        return user
 
 
 class CustomPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'input-field'})
+            field.widget.attrs.update({"class": "input-field"})

@@ -44,13 +44,23 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     name = models.CharField(max_length=124, verbose_name="Имя")
     surname = models.CharField(max_length=124, verbose_name="Фамилия")
-    avatar = models.ImageField(upload_to='avatars/', verbose_name="Аватар")
-    phone = models.CharField(max_length=12, verbose_name="Телефон")
+    avatar = models.ImageField(
+        upload_to='avatars/',
+        verbose_name="Аватар",
+        blank=True,
+        null=True,
+    )
+    phone = models.CharField(max_length=12, verbose_name="Телефон", blank=True, default='')
     github_url = models.URLField(blank=True, null=True, verbose_name="GitHub")
     about = models.TextField(max_length=256, blank=True, null=True, verbose_name="О себе")
+    favorite_projects = models.ManyToManyField(
+        'projects.Project',
+        blank=True,
+        related_name='favorited_by_profiles',
+        verbose_name="Избранные проекты",
+    )
 
     def save(self, *args, **kwargs):
-        # Генерация аватарки при создании, если её нет
         if not self.avatar:
             letter = self.name[0].upper() if self.name else "?"
             filename = f"avatar_{self.user.username}_{random.randint(1, 10000)}.png"
