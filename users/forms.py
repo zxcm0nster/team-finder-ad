@@ -15,7 +15,6 @@ User = get_user_model()
 
 
 class CustomUserCreationForm(UserCreationForm):
-    """Регистрация: email как логин; имя/фамилия попадают в User и далее в Profile через сигнал."""
 
     email = forms.EmailField(label="Email", required=True)
 
@@ -56,7 +55,6 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 class EmailLoginForm(AuthenticationForm):
-    """Вход по email и паролю (username в БД = email)."""
 
     error_messages = {
         **AuthenticationForm.error_messages,

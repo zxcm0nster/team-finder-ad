@@ -21,7 +21,6 @@ AVATAR_COLORS = [
 
 
 def generate_avatar(letter, size=(200, 200)):
-    """Генерирует картинку с буквой на цветном фоне"""
     color = random.choice(AVATAR_COLORS)
     image = Image.new('RGB', size, color)
     draw = ImageDraw.Draw(image)
