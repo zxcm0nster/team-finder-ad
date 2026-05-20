@@ -13,7 +13,7 @@
 <div class="project-container">
     <div class="project-card">
         <div class="project-card-header">
-            <a href="/users/{{ project.owner.id }}">
+            <a href="{% url 'users:user_detail' project.owner.id %}">
                 <div class="project-card-header-left">
                     {% if project.owner.profile.avatar %}
                         <img src="{{ project.owner.profile.avatar.url }}" alt="Аватар автора" class="project-author-avatar">
@@ -113,7 +113,7 @@
     <h3>Участники проекта (<span id="participants-count" style="display:inline">{{ project.participants.all|length }}</span>)</h3>
     <div id="participants-list" class="participants-list">
         {% for member in project.participants.all %}
-        <a href="/users/{{ member.id }}" id="participant-{{ member.id }}">
+        <a href="{% url 'users:user_detail' member.id %}" id="participant-{{ member.id }}">
             <div class="participant-item">
                 {% if member.profile.avatar %}
                     <img src="{{ member.profile.avatar.url }}" alt="Аватар" class="participant-avatar">

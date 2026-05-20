@@ -3,8 +3,11 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, ListView, CreateView, UpdateView
 from .models import Project, Skill
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms import ProjectForm
+from django.urls import reverse_lazy
 
 class ProjectListView(ListView):
     model = Project
@@ -97,3 +100,50 @@ def remove_skill_from_project(request, project_id, skill_id):
     skill = get_object_or_404(Skill, id=skill_id)
     project.skills.remove(skill) # Удаляем связь, сам навык в базе остается
     return JsonResponse({'status': 'ok'})
+
+class ProjectCreateView(LoginRequiredMixin, CreateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = 'projects/create-project.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_edit'] = False  # Флаг создания
+        return context
+
+    def form_valid(self, form):
+        # Автоматически назначаем текущего пользователя создателем проекта
+        form.instance.owner = self.request.user
+        
+        # Сохраняем проект в базу данных, чтобы получить id объекта
+        response = super().form_valid(form)
+        
+        # Добавляем автора в список участников проекта (поле ManyToMany)
+        # Примечание: если поле участников в модели называется по-другому (например, members), замени .participants на имя своего поля
+        self.object.participants.add(self.request.user)
+        
+        return response
+        
+    def get_success_url(self):
+        # После успешного создания перекидываем на страницу этого проекта
+        return reverse_lazy('projects:detail', kwargs={'pk': self.object.id})
+
+
+class ProjectUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = 'projects/create-project.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_edit'] = True  # Флаг редактирования
+        return context
+
+    def get_queryset(self):
+        # Важнейший момент безопасности!
+        # Ограничиваем поиск проектов только теми, где текущий юзер — владелец.
+        # Если чужой юзер попытается зайти по ссылке /edit/, он получит 404.
+        return Project.objects.filter(owner=self.request.user)
+        
+    def get_success_url(self):
+        return reverse_lazy('projects:detail', kwargs={'pk': self.object.id})
