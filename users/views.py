@@ -1,18 +1,23 @@
-from django.contrib.auth import login, logout
-from django.contrib.auth.views import LoginView
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView, DetailView
+from django.contrib.auth import (
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.generic import CreateView, DetailView, ListView
+
 from .forms import (
+    CustomPasswordChangeForm,
     CustomUserCreationForm,
     EmailLoginForm,
     ProfileEditForm,
-    CustomPasswordChangeForm,
 )
-from django.contrib.auth import get_user_model
-from django.contrib.auth import update_session_auth_hash
+
+PAGINATE_BY_COUNT = 6
 
 User = get_user_model()
 
@@ -53,7 +58,7 @@ class ParticipantListView(ListView):
     model = User
     template_name = "users/participants.html"
     context_object_name = "participants"
-    paginate_by = 6
+    paginate_by = PAGINATE_BY_COUNT
 
     def get_queryset(self):
         return User.objects.order_by("id").select_related("profile")

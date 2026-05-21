@@ -1,4 +1,3 @@
-import re
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import (
@@ -7,15 +6,14 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 from django.core.exceptions import ValidationError
-from urllib.parse import urlparse
 
 from .models import Profile
+from .utils import validate_and_normalize_phone, validate_github_url
 
 User = get_user_model()
 
 
 class CustomUserCreationForm(UserCreationForm):
-
     email = forms.EmailField(label="Email", required=True)
 
     class Meta(UserCreationForm.Meta):
@@ -55,7 +53,6 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 class EmailLoginForm(AuthenticationForm):
-
     error_messages = {
         **AuthenticationForm.error_messages,
         "invalid_login": "Неверный email или пароль",
@@ -116,18 +113,11 @@ class ProfileEditForm(forms.ModelForm):
         }
 
     def clean_phone(self):
-        phone = self.cleaned_data.get("phone", "").strip()
-        if not phone:
-            raise ValidationError("Укажите номер телефона.")
+        phone = self.cleaned_data.get("phone", "")
+        # ИСПРАВЛЕНО (Перенесено в utils.py): базовая валидация формата и нормализация
+        phone = validate_and_normalize_phone(phone)
 
-        if not re.match(r"^(\+7|8)\d{10}$", phone):
-            raise ValidationError(
-                "Номер телефона должен быть в формате 8XXXXXXXXXX или +7XXXXXXXXXX."
-            )
-
-        if phone.startswith("8"):
-            phone = "+7" + phone[1:]
-
+        # Проверку на уникальность в базе данных оставляем в форме (ей нужен доступ к self.instance)
         if (
             Profile.objects.filter(phone=phone)
             .exclude(pk=self.instance.pk)
@@ -138,15 +128,9 @@ class ProfileEditForm(forms.ModelForm):
         return phone
 
     def clean_github_url(self):
-        github_url = (self.cleaned_data.get("github_url") or "").strip()
-        if not github_url:
-            return github_url
-        parsed_url = urlparse(github_url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            raise ValidationError("Введите корректный URL-адрес.")
-        if "github.com" not in parsed_url.netloc.lower():
-            raise ValidationError("Ссылка должна вести именно на сайт github.com.")
-        return github_url
+        github_url = self.cleaned_data.get("github_url", "")
+        # ИСПРАВЛЕНО (Перенесено в utils.py): вся валидация ушла во внешний хелпер
+        return validate_github_url(github_url)
 
 
 class CustomPasswordChangeForm(PasswordChangeForm):
